@@ -1,0 +1,89 @@
+pipeline {
+    agent any
+
+    environment {
+        IMAGE_NAME = 'tlgrange/pixxel247'
+        DOCKERHUB_CREDENTIALS_ID = 'DOCKERHUB_CREDENTIALS'
+    }
+
+    stages {
+        stage('Setup: Docker') {
+            steps {
+                sh '''
+                    docker --version
+                    sudo chmod 666 /var/run/docker.sock
+                '''
+            }
+        }
+
+        stage('Setup: Buildx') {
+            steps {
+                sh '''
+                    docker run --rm --privileged tonistiigi/binfmt --install all
+                    docker buildx create --name pixxel247-builder --use || docker buildx use pixxel247-builder
+                    docker buildx inspect --bootstrap
+                '''
+            }
+        }
+
+        stage('Checkout') {
+            steps { checkout scm }
+        }
+
+        stage('Verify') {
+            steps {
+                sh '''
+                    npm ci
+                    npx prisma generate
+                    npx tsc --noEmit
+                    npm run build
+                '''
+            }
+        }
+
+        stage('Compute Version') {
+            steps {
+                script {
+                    def response = sh(script: "curl -sf 'https://hub.docker.com/v2/repositories/${env.IMAGE_NAME}/tags?page_size=100'", returnStdout: true).trim()
+                    if (!response) { error("Failed to fetch Docker Hub tags for ${env.IMAGE_NAME}") }
+                    env.IMAGE_VERSION = computeNextVersion(response)
+                    echo "Computed next version: ${env.IMAGE_VERSION}"
+                }
+            }
+        }
+
+        stage('Build & Push: amd64 + arm64') {
+            steps {
+                withCredentials([usernamePassword(credentialsId: DOCKERHUB_CREDENTIALS_ID, usernameVariable: 'DOCKERHUB_USER', passwordVariable: 'DOCKERHUB_PASS')]) {
+                    sh '''
+                        echo "$DOCKERHUB_PASS" | docker login -u "$DOCKERHUB_USER" --password-stdin
+                        docker buildx build \
+                            --platform linux/amd64,linux/arm64 \
+                            --build-arg NPM_REGISTRY=http://192.168.100.223:4873 \
+                            -t ${IMAGE_NAME}:${IMAGE_VERSION} \
+                            -t ${IMAGE_NAME}:latest \
+                            --push .
+                        docker logout
+                    '''
+                }
+            }
+        }
+    }
+
+    post {
+        always { cleanWs() }
+        success { echo "Pushed ${IMAGE_NAME}:${IMAGE_VERSION} and ${IMAGE_NAME}:latest" }
+        failure { echo 'Build/push failed -- check logs above' }
+    }
+}
+
+@NonCPS
+def computeNextVersion(String tagsJson) {
+    def matches = (tagsJson =~ /"name"\s*:\s*"(\d+)\.(\d+)"/)
+    def versions = []
+    for (m in matches) { versions << [m[1].toInteger(), m[2].toInteger()] }
+    if (versions.isEmpty()) { return '1.0' }
+    versions.sort { a, b -> a[0] != b[0] ? a[0] <=> b[0] : a[1] <=> b[1] }
+    def latest = versions[-1]
+    return "${latest[0]}.${latest[1] + 1}"
+}

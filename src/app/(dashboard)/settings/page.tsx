@@ -32,6 +32,13 @@ const TILES: { key: string; label: string; description: string; icon: string; hr
     href: "/settings/feature-flags",
   },
   {
+    key: "pixxel-connection",
+    label: "Pixxel Connection",
+    description: "Configure access to the Pixxel server and pull down the asset list",
+    icon: "M13.5 10.5V6.75a4.5 4.5 0 119 0v3.75M3.75 21.75h10.5a2.25 2.25 0 002.25-2.25v-6.75a2.25 2.25 0 00-2.25-2.25H3.75a2.25 2.25 0 00-2.25 2.25v6.75a2.25 2.25 0 002.25 2.25z",
+    href: "/settings/pixxel-connection",
+  },
+  {
     key: "api-access",
     label: "API Access",
     description: "Manage API keys for programmatic access to the platform",

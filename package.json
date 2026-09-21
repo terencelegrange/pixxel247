@@ -3,9 +3,9 @@
   "version": "0.1.0",
   "private": true,
   "scripts": {
-    "dev": "next dev -p 3333 --experimental-https",
+    "dev": "next dev -p 3336 --experimental-https",
     "build": "next build",
-    "start": "next start -p 3333",
+    "start": "next start -p 3336",
     "db:generate": "prisma generate"
   },
   "dependencies": {
@@ -26,5 +26,12 @@
     "tailwindcss": "^3.4.14",
     "autoprefixer": "^10.4.20",
     "postcss": "^8.4.47"
+  },
+  "allowScripts": {
+    "@prisma/client@5.22.0": true,
+    "@prisma/engines@5.22.0": true,
+    "fsevents@2.3.3": true,
+    "prisma@5.22.0": true,
+    "sharp@0.34.5": true
   }
 }

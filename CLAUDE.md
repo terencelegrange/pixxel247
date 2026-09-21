@@ -127,6 +127,7 @@ When you create a new API route at `src/app/api/<path>/route.ts`, you **must** a
 ```
 DATABASE_URL="mysql://USER:PASS@HOST:3306/boilerplate"
 JWT_SECRET="..."
+MONITORING_ENCRYPTION_KEY="..."       # optional; encrypts monitor headers/bodies, falls back to JWT_SECRET
 ADMIN_EMAIL="..."
 ADMIN_PASSWORD_HASH="\$2b\$10\$..."   # escape $ as \$ in .env (dotenv-expand)
 ```

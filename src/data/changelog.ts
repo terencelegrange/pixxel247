@@ -9,6 +9,10 @@
  * Format: { date: "YYYY-MM-DD", description: "Short description of the change" }
  */
 export const CHANGELOG: { date: string; description: string }[] = [
+  { date: "2026-09-21", description: "Added Docker, Jenkins, Gitea, GitHub, Docker Hub, and Proxmox deployment configuration with a database-backed health endpoint" },
+  { date: "2026-09-21", description: "Added an inline Test action for asset monitoring configurations with live status, response code, timing, and diagnostic feedback" },
+  { date: "2026-09-21", description: "Added business service composition, encrypted per-asset health checks with Statuspage discovery, and on-demand live service verification" },
+  { date: "2026-09-12", description: "Added Pixxel Connection settings (server URL + API key) and an Assets page — pulls the organizational asset list from a configured Pixxel server via its REST API, the foundation for defining business services from these assets" },
   { date: "2026-09-10", description: "Added 'Trust this device' to login — a checkbox at the password step issues a 30-day device token so a remembered profile can sign in without re-entering the password; revocable via the profile's 'forget' control" },
   { date: "2026-09-10", description: "Added Netflix-style login screen — remembers previously signed-in accounts as avatar profiles on this device, with a password-only re-login step and a per-profile 'forget' control; login response now returns avatar/name for the client" },
   { date: "2026-08-04", description: "Removed site monitoring / health-check feature and environment selector to restore this as a generic app template" },

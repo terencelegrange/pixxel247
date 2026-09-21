@@ -8,18 +8,95 @@ datasource db {
 }
 
 model User {
-  id            Int         @id @default(autoincrement())
-  email         String      @unique @db.VarChar(200)
-  password_hash String      @db.VarChar(255)
-  name          String?     @db.VarChar(200)
-  role          String      @default("user") @db.VarChar(20)
-  status        String      @default("pending") @db.VarChar(20)
-  theme         String      @default("dark") @db.VarChar(10)
-  created_at    DateTime    @default(now())
-  updated_at    DateTime    @updatedAt
+  id            Int        @id @default(autoincrement())
+  email         String     @unique @db.VarChar(200)
+  password_hash String     @db.VarChar(255)
+  name          String?    @db.VarChar(200)
+  role          String     @default("user") @db.VarChar(20)
+  status        String     @default("pending") @db.VarChar(20)
+  theme         String     @default("dark") @db.VarChar(10)
+  created_at    DateTime   @default(now())
+  updated_at    DateTime   @updatedAt
   audit_logs    AuditLog[]
 
   @@map("users")
+}
+
+model PixxelSyncConfig {
+  id                  Int       @id @default(autoincrement())
+  server_url          String    @db.VarChar(500)
+  api_key             String?   @db.Text
+  last_sync_at        DateTime?
+  last_sync_status    String?   @db.VarChar(20)
+  last_sync_message   String?   @db.Text
+  assets_synced_count Int       @default(0)
+  created_at          DateTime  @default(now())
+  updated_at          DateTime  @updatedAt
+
+  @@map("pixxel_sync_config")
+}
+
+model Asset {
+  id                String                 @id @db.VarChar(64)
+  pixxel_asset_id   String                 @unique @db.VarChar(64)
+  name              String                 @db.VarChar(255)
+  short_code        String?                @db.VarChar(100)
+  category          String?                @db.VarChar(100)
+  type              String?                @db.VarChar(100)
+  lifecycle_status  String?                @db.VarChar(50)
+  description       String?                @db.Text
+  business_owner    String?                @db.VarChar(200)
+  technical_owner   String?                @db.VarChar(200)
+  vendor            String?                @db.VarChar(200)
+  app_url           String?                @db.VarChar(500)
+  doc_url           String?                @db.VarChar(500)
+  raw_sync_data     String?                @db.Text
+  created_at        DateTime               @default(now())
+  updated_at        DateTime               @updatedAt
+  monitor_config    AssetMonitorConfig?
+  business_services BusinessServiceAsset[]
+
+  @@map("assets")
+}
+
+model BusinessService {
+  id          Int                    @id @default(autoincrement())
+  name        String                 @unique @db.VarChar(200)
+  description String?                @db.Text
+  assets      BusinessServiceAsset[]
+  created_at  DateTime               @default(now())
+  updated_at  DateTime               @updatedAt
+
+  @@map("business_services")
+}
+
+model BusinessServiceAsset {
+  service_id Int
+  asset_id   String          @db.VarChar(64)
+  service    BusinessService @relation(fields: [service_id], references: [id], onDelete: Cascade)
+  asset      Asset           @relation(fields: [asset_id], references: [id], onDelete: Cascade)
+
+  @@id([service_id, asset_id])
+  @@map("business_service_assets")
+}
+
+model AssetMonitorConfig {
+  id                        Int      @id @default(autoincrement())
+  asset_id                  String   @unique @db.VarChar(64)
+  asset                     Asset    @relation(fields: [asset_id], references: [id], onDelete: Cascade)
+  check_type                String   @db.VarChar(30)
+  url                       String   @db.VarChar(1000)
+  method                    String   @default("GET") @db.VarChar(10)
+  expected_status           Int      @default(200)
+  headers_encrypted         String?  @db.Text
+  body_encrypted            String?  @db.Text
+  timeout_ms                Int      @default(10000)
+  statuspage_component_id   String?  @db.VarChar(100)
+  statuspage_component_name String?  @db.VarChar(255)
+  created_at                DateTime @default(now())
+  updated_at                DateTime @updatedAt
+
+  @@map("asset_monitor_configs")
 }
 
 model AuditLog {
@@ -35,4 +112,3 @@ model AuditLog {
 
   @@map("audit_logs")
 }
-

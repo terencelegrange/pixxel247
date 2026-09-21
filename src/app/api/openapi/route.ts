@@ -52,6 +52,18 @@ const spec = {
   },
   security: [{ cookieAuth: [] }],
   paths: {
+    "/health": {
+      get: {
+        tags: ["Meta"],
+        summary: "Service health",
+        description: "Public deployment health check that verifies application and database readiness.",
+        security: [],
+        responses: {
+          200: { description: "Application and database are healthy" },
+          503: { description: "Application is running but the database is unavailable" },
+        },
+      },
+    },
     // ── Auth ────────────────────────────────────────────────────────────
     "/auth/login": {
       post: {
@@ -476,6 +488,167 @@ const spec = {
             },
           },
           401: { description: "Not authenticated" },
+        },
+      },
+    },
+
+    // ── Assets ──────────────────────────────────────────────────────────
+    "/assets": {
+      get: {
+        tags: ["Assets"],
+        summary: "List local assets",
+        description: "Returns assets pulled from the configured Pixxel server, ordered by name.",
+        responses: {
+          200: {
+            description: "Asset list",
+            content: {
+              "application/json": {
+                schema: {
+                  type: "object",
+                  properties: {
+                    assets: {
+                      type: "array",
+                      items: {
+                        type: "object",
+                        properties: {
+                          id:                { type: "string" },
+                          pixxel_asset_id:   { type: "string" },
+                          name:              { type: "string" },
+                          short_code:        { type: "string", nullable: true },
+                          category:          { type: "string", nullable: true },
+                          type:              { type: "string", nullable: true },
+                          lifecycle_status:  { type: "string", nullable: true },
+                          description:       { type: "string", nullable: true },
+                          business_owner:    { type: "string", nullable: true },
+                          technical_owner:   { type: "string", nullable: true },
+                          vendor:            { type: "string", nullable: true },
+                          app_url:           { type: "string", nullable: true },
+                          doc_url:           { type: "string", nullable: true },
+                          created_at:        { type: "string", format: "date-time" },
+                          updated_at:        { type: "string", format: "date-time" },
+                        },
+                      },
+                    },
+                  },
+                },
+              },
+            },
+          },
+          401: { description: "Not authenticated" },
+        },
+      },
+    },
+
+    // ── Business service monitoring ────────────────────────────────────
+    "/business-services": {
+      get: {
+        tags: ["Business Services"],
+        summary: "List business services",
+        description: "Lists services with asset and configured-monitor counts.",
+        responses: { 200: { description: "Business service list" }, 401: { description: "Not authenticated" } },
+      },
+      post: {
+        tags: ["Business Services"],
+        summary: "Create a business service",
+        description: "Creates a service and assigns assets. Editor or admin role required.",
+        requestBody: { required: true, content: { "application/json": { schema: { type: "object", required: ["name", "assetIds"], properties: { name: { type: "string" }, description: { type: "string", nullable: true }, assetIds: { type: "array", items: { type: "string" } } } } } } },
+        responses: { 201: { description: "Created" }, 400: { description: "Invalid request" }, 401: { description: "Not authenticated" }, 403: { description: "Editor or admin role required" } },
+      },
+    },
+    "/business-services/{id}": {
+      get: {
+        tags: ["Business Services"], summary: "Get a business service and its assets",
+        parameters: [{ name: "id", in: "path", required: true, schema: { type: "integer" } }],
+        responses: { 200: { description: "Business service" }, 404: { description: "Not found" } },
+      },
+      patch: {
+        tags: ["Business Services"], summary: "Update a business service", description: "Replaces service details and assigned assets. Editor or admin role required.",
+        parameters: [{ name: "id", in: "path", required: true, schema: { type: "integer" } }],
+        requestBody: { required: true, content: { "application/json": { schema: { type: "object", required: ["name", "assetIds"], properties: { name: { type: "string" }, description: { type: "string", nullable: true }, assetIds: { type: "array", items: { type: "string" } } } } } } },
+        responses: { 200: { description: "Updated" }, 403: { description: "Editor or admin role required" }, 404: { description: "Not found" } },
+      },
+      delete: {
+        tags: ["Business Services"], summary: "Delete a business service", description: "Deletes the service only; assets and monitor configurations remain. Editor or admin role required.",
+        parameters: [{ name: "id", in: "path", required: true, schema: { type: "integer" } }],
+        responses: { 200: { description: "Deleted" }, 403: { description: "Editor or admin role required" }, 404: { description: "Not found" } },
+      },
+    },
+    "/assets/{id}/monitor": {
+      get: {
+        tags: ["Monitoring"], summary: "Get an asset monitor configuration", description: "Secret headers and request bodies are never returned.",
+        parameters: [{ name: "id", in: "path", required: true, schema: { type: "string" } }],
+        responses: { 200: { description: "Asset and safe monitor configuration" }, 404: { description: "Asset not found" } },
+      },
+      put: {
+        tags: ["Monitoring"], summary: "Create or replace an asset monitor", description: "Supports generic HTTP, Statuspage, and custom HTTP requests. Headers and request bodies are encrypted at rest. Editor or admin role required.",
+        parameters: [{ name: "id", in: "path", required: true, schema: { type: "string" } }],
+        requestBody: { required: true, content: { "application/json": { schema: { type: "object", required: ["check_type", "url"], properties: { check_type: { type: "string", enum: ["http", "statuspage", "custom"] }, url: { type: "string", format: "uri" }, method: { type: "string", enum: ["GET", "HEAD", "POST", "PUT", "PATCH", "DELETE"] }, expected_status: { type: "integer", minimum: 100, maximum: 599 }, timeout_ms: { type: "integer", minimum: 1000, maximum: 30000 }, headers: { type: "string", description: "JSON object encrypted before storage" }, request_body: { type: "string", description: "Request body encrypted before storage" }, statuspage_component_id: { type: "string" } } } } } },
+        responses: { 200: { description: "Saved" }, 400: { description: "Invalid configuration" }, 403: { description: "Editor or admin role required" } },
+      },
+      post: {
+        tags: ["Monitoring"], summary: "Test an asset monitor configuration", description: "Runs the supplied configuration without saving it. Blank secret fields reuse any encrypted values already stored for the asset. Editor or admin role required.",
+        parameters: [{ name: "id", in: "path", required: true, schema: { type: "string" } }],
+        requestBody: { required: true, content: { "application/json": { schema: { type: "object", required: ["check_type", "url"], properties: { check_type: { type: "string", enum: ["http", "statuspage", "custom"] }, url: { type: "string", format: "uri" }, method: { type: "string", enum: ["GET", "HEAD", "POST", "PUT", "PATCH", "DELETE"] }, expected_status: { type: "integer", minimum: 100, maximum: 599 }, timeout_ms: { type: "integer", minimum: 1000, maximum: 30000 }, headers: { type: "string" }, request_body: { type: "string" }, statuspage_component_id: { type: "string" } } } } } },
+        responses: { 200: { description: "Test result including status, response code, response time, and message" }, 400: { description: "Invalid configuration or test failed" }, 403: { description: "Editor or admin role required" }, 404: { description: "Asset not found" } },
+      },
+      delete: {
+        tags: ["Monitoring"], summary: "Remove an asset monitor", description: "Editor or admin role required.",
+        parameters: [{ name: "id", in: "path", required: true, schema: { type: "string" } }],
+        responses: { 200: { description: "Removed" }, 403: { description: "Editor or admin role required" } },
+      },
+    },
+    "/statuspage/discover": {
+      post: {
+        tags: ["Monitoring"], summary: "Discover Statuspage components", description: "Converts a Statuspage landing-page URL to its components API and returns selectable components.",
+        requestBody: { required: true, content: { "application/json": { schema: { type: "object", required: ["url"], properties: { url: { type: "string", format: "uri" } } } } } },
+        responses: { 200: { description: "Component list" }, 400: { description: "Discovery failed" } },
+      },
+    },
+    "/verification": {
+      post: {
+        tags: ["Monitoring"], summary: "Run live business-service verification", description: "Checks every assigned asset in parallel and returns healthy, degraded, or down overall status.",
+        requestBody: { required: true, content: { "application/json": { schema: { type: "object", required: ["serviceId"], properties: { serviceId: { type: "integer" } } } } } },
+        responses: { 200: { description: "Verification results" }, 400: { description: "Invalid service" }, 404: { description: "Service not found" } },
+      },
+    },
+
+    // ── Settings: Pixxel Connection ────────────────────────────────────
+    "/settings/pixxel-sync": {
+      get: {
+        tags: ["Settings"],
+        summary: "Get Pixxel connection config",
+        description: "Returns the configured Pixxel server URL, masked API key, and last pull status.",
+        responses: {
+          200: { description: "Connection config" },
+          401: { description: "Not authenticated" },
+        },
+      },
+      post: {
+        tags: ["Settings"],
+        summary: "Manage the Pixxel connection",
+        description: "Admin only. `action` selects the operation: `update_config` saves the server URL/API key, `test_connection` verifies reachability without writing local data, `pull_now` fetches `/api/assets` from the configured Pixxel server and upserts them into the local asset registry.",
+        requestBody: {
+          required: true,
+          content: {
+            "application/json": {
+              schema: {
+                type: "object",
+                required: ["action"],
+                properties: {
+                  action:     { type: "string", enum: ["update_config", "test_connection", "pull_now"] },
+                  server_url: { type: "string", description: "Base URL of the Pixxel server" },
+                  api_key:    { type: "string", description: "Bearer API key issued by the Pixxel server" },
+                },
+              },
+            },
+          },
+        },
+        responses: {
+          200: { description: "Action result" },
+          400: { description: "Invalid action or missing API key" },
+          401: { description: "Not authenticated" },
+          403: { description: "Admin role required" },
+          502: { description: "Could not reach the Pixxel server" },
         },
       },
     },

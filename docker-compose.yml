@@ -1,0 +1,26 @@
+services:
+  pixxel247:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      args:
+        NPM_REGISTRY: http://192.168.100.223:4873
+    image: pixxel247:latest
+    container_name: pixxel247
+    restart: unless-stopped
+    ports:
+      - "7003:3336"
+    env_file:
+      # A non-.env name avoids Compose interpolation of bcrypt dollar signs.
+      - pixxel247.env
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://localhost:3336/api/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"

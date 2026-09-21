@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { verifyToken } from "@/lib/auth";
 
-const PUBLIC = ["/login", "/signup", "/api/auth/login", "/api/auth/signup", "/api/auth/device", "/avatars"];
+const PUBLIC = ["/login", "/signup", "/api/auth/login", "/api/auth/signup", "/api/auth/device", "/api/health", "/avatars"];
 
 export async function middleware(req: NextRequest) {
   const { pathname } = req.nextUrl;

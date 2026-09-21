@@ -26,6 +26,24 @@ export const NAV_ITEMS: NavItem[] = [
     icon: "M3.75 6A2.25 2.25 0 016 3.75h2.25A2.25 2.25 0 0110.5 6v2.25a2.25 2.25 0 01-2.25 2.25H6a2.25 2.25 0 01-2.25-2.25V6zM3.75 15.75A2.25 2.25 0 016 13.5h2.25a2.25 2.25 0 012.25 2.25V18a2.25 2.25 0 01-2.25 2.25H6A2.25 2.25 0 013.75 18v-2.25zM13.5 6a2.25 2.25 0 012.25-2.25H18A2.25 2.25 0 0120.25 6v2.25A2.25 2.25 0 0118 10.5h-2.25a2.25 2.25 0 01-2.25-2.25V6zM13.5 15.75a2.25 2.25 0 012.25-2.25H18a2.25 2.25 0 012.25 2.25V18A2.25 2.25 0 0118 20.25h-2.25A2.25 2.25 0 0113.5 18v-2.25z",
   },
   {
+    key: "assets",
+    href: "/assets",
+    label: "Assets",
+    icon: "M20.25 6.375c0 2.278-3.694 4.125-8.25 4.125S3.75 8.653 3.75 6.375m16.5 0c0-2.278-3.694-4.125-8.25-4.125S3.75 4.097 3.75 6.375m16.5 0v11.25c0 2.278-3.694 4.125-8.25 4.125s-8.25-1.847-8.25-4.125V6.375m16.5 3.75c0 2.278-3.694 4.125-8.25 4.125s-8.25-1.847-8.25-4.125",
+  },
+  {
+    key: "business-services",
+    href: "/services",
+    label: "Business Services",
+    icon: "M6.429 9.75L2.25 12l4.179 2.25m0-4.5L12 12.75l5.571-3m-11.142 0L2.25 7.5 12 2.25l9.75 5.25-4.179 2.25m0 0L21.75 12l-4.179 2.25m0 0L12 17.25l-5.571-3m11.142 0l4.179 2.25L12 21.75 2.25 16.5l4.179-2.25",
+  },
+  {
+    key: "verification",
+    href: "/verify",
+    label: "Live Verification",
+    icon: "M9 12.75l2.25 2.25L15 9.75m6-3.75a12.83 12.83 0 01-9 3 12.83 12.83 0 01-9-3c0 5.591 3.824 10.29 9 11.622C17.176 16.29 21 11.59 21 6z",
+  },
+  {
     key: "settings",
     href: "/settings",
     label: "Settings",
@@ -43,7 +61,7 @@ export const ROLES = [
 
 /** Default permissions: which nav keys each role can access */
 export const DEFAULT_ROLE_PERMISSIONS: Record<string, string[]> = {
-  viewer: ["dashboard"],
-  editor: ["dashboard"],
-  admin:  ["dashboard", "settings"],
+  viewer: ["dashboard", "assets", "business-services", "verification"],
+  editor: ["dashboard", "assets", "business-services", "verification"],
+  admin:  ["dashboard", "assets", "business-services", "verification", "settings"],
 };
