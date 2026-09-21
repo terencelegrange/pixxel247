@@ -1,16 +1,17 @@
-# Boilerplate Admin App — Claude Instructions
+# Pixxel247 — Development Instructions
 
 ## Architecture Overview
 
-**Stack:** Next.js 15 (App Router) · TypeScript · Tailwind CSS v3 (darkMode: "class") · Prisma 5 + MySQL · JWT (jose) · bcryptjs
-**Port:** 3333 (dev and prod)
-**Database:** `boilerplate` schema on the shared AWS RDS MySQL instance
+**Stack:** Next.js 15 (App Router) · TypeScript · Tailwind CSS v3 (darkMode: "class") · Prisma 5 · MySQL/MariaDB or SQLite · JWT (jose) · bcryptjs
+**Port:** 3336 in the app container; 7003 on the deployed Proxmox host
+**Database:** Selected by the user in the first-run setup wizard and persisted in `data/site.config.json`
 
 ### Directory Structure
 
 ```
 src/
   app/
+    (setup)/              # Public first-run database and administrator wizard
     (dashboard)/          # Authenticated layout group
       layout.tsx          # Sidebar + top bar + profile modal. Reads feature flags.
       page.tsx            # Dashboard — stat tiles + placeholder tiles + recent users
@@ -42,12 +43,13 @@ src/
     changelog.ts          # Static array of changelog entries — Claude edits this file
     nav.ts                # Nav item definitions + role defaults — Claude edits when adding nav items
   lib/
-    prisma.ts             # Singleton PrismaClient
+    prisma.ts             # Runtime MySQL/SQLite Prisma client facade
+    setup.ts              # Persistent site config and database URL resolution
     auth.ts               # JWT sign/verify, getSession(), cookie names: bp_token, bp_theme
     initDb.ts             # Creates tables + seeds admin + seeds feature flags on first request
     audit.ts              # auditLog() helper — never throws
     flags.ts              # isFlagEnabled(key) — fails open (returns true on error)
-  middleware.ts           # Protects all routes except /login, /signup, /api/auth/*
+  middleware.ts           # Protects all routes except auth, setup, health and avatars
 ```
 
 ### Database Tables
@@ -122,19 +124,17 @@ When you create a new API route at `src/app/api/<path>/route.ts`, you **must** a
 
 ---
 
-## Environment Variables (.env)
+## First-run setup and environment
+
+Fresh installations open `/setup`. The wizard requires a successful database test, supports either a persistent local SQLite file or a MySQL/MariaDB server, creates the schema, and creates the first administrator. Configuration is written with owner-only permissions to `PIXXEL247_DATA_DIR/site.config.json`; database passwords must never be committed.
 
 ```
-DATABASE_URL="mysql://USER:PASS@HOST:3306/boilerplate"
+PIXXEL247_DATA_DIR="data"
 JWT_SECRET="..."
 MONITORING_ENCRYPTION_KEY="..."       # optional; encrypts monitor headers/bodies, falls back to JWT_SECRET
-ADMIN_EMAIL="..."
-ADMIN_PASSWORD_HASH="\$2b\$10\$..."   # escape $ as \$ in .env (dotenv-expand)
 ```
 
-**Dollar sign escaping:** Next.js uses dotenv-expand. Any `$` in `.env` values (bcrypt hashes, DB passwords) must be escaped as `\$`.
-
-**Default seeded admin:** `ADMIN_EMAIL`/`ADMIN_PASSWORD_HASH` are seeded into `users` by `initDb()` on first request, only if no user with that email already exists. The local `.env` currently seeds `admin@admin.com` / `admin` (hash generated via `bcrypt.hash("admin", 10)`) — a weak placeholder login intended for local/dev use only. Generate a new hash and rotate this before any non-local deployment.
+`DATABASE_URL`, `ADMIN_EMAIL`, and `ADMIN_PASSWORD_HASH` remain supported as a preconfigured development/legacy path. New deployments should use the wizard.
 
 ---
 
@@ -148,4 +148,6 @@ ADMIN_PASSWORD_HASH="\$2b\$10\$..."   # escape $ as \$ in .env (dotenv-expand)
 
 ## Docker / Deployment
 - `next.config.ts` has `output: "standalone"` for Docker builds
-- `Dockerfile` (when created) needs `chmod -R +x node_modules/.bin` in both `deps` and `builder` stages (Alpine permission fix)
+- `Dockerfile` generates both Prisma clients and runs as the non-root `nextjs` user
+- `docker-compose.yml` persists setup configuration and SQLite data in the `pixxel247_data` named volume
+- `Jenkinsfile` deploys Gitea commits to `/home/pixxel247` on Proxmox; `Jenkinsfile.dockerhub` publishes multi-architecture Docker Hub images

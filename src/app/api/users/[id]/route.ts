@@ -21,11 +21,11 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
   const allowedRole = ["admin", "user"];
 
   if (status && allowedStatus.includes(status)) {
-    await prisma.$executeRaw`UPDATE users SET status = ${status}, updated_at = NOW() WHERE id = ${userId}`;
+    await prisma.$executeRaw`UPDATE users SET status = ${status}, updated_at = CURRENT_TIMESTAMP WHERE id = ${userId}`;
     await auditLog({ userId: parseInt(session.sub), action: status.toUpperCase(), resource: "users", resourceId: userId, ip: getIp(req) });
   }
   if (role && allowedRole.includes(role)) {
-    await prisma.$executeRaw`UPDATE users SET role = ${role}, updated_at = NOW() WHERE id = ${userId}`;
+    await prisma.$executeRaw`UPDATE users SET role = ${role}, updated_at = CURRENT_TIMESTAMP WHERE id = ${userId}`;
     await auditLog({ userId: parseInt(session.sub), action: "UPDATE", resource: "users", resourceId: userId, details: { role }, ip: getIp(req) });
   }
 

@@ -16,7 +16,7 @@ COPY --from=deps /app/node_modules ./node_modules
 RUN chmod -R +x node_modules/.bin
 COPY . .
 ENV NEXT_TELEMETRY_DISABLED=1
-RUN npx prisma generate
+RUN SQLITE_DATABASE_URL=file:/tmp/pixxel247-build.db npm run db:generate
 RUN npm run build
 
 FROM node:22-alpine AS runner
@@ -35,6 +35,8 @@ COPY --from=builder --chown=nextjs:nodejs /app/.next/static ./.next/static
 COPY --from=builder --chown=nextjs:nodejs /app/public ./public
 COPY --from=builder --chown=nextjs:nodejs /app/node_modules/.prisma ./node_modules/.prisma
 COPY --from=builder --chown=nextjs:nodejs /app/prisma ./prisma
+
+RUN mkdir -p /app/data && chown nextjs:nodejs /app/data
 
 USER nextjs
 EXPOSE 3336

@@ -57,7 +57,7 @@ export async function PATCH(req: NextRequest) {
     return NextResponse.json({ error: "Nothing to update" }, { status: 400 });
   }
 
-  updates.push("updated_at = NOW()");
+  updates.push("updated_at = CURRENT_TIMESTAMP");
   values.push(userId);
 
   await prisma.$executeRawUnsafe(

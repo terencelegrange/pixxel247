@@ -52,7 +52,7 @@ export async function POST(req: NextRequest) {
 
   await prisma.$executeRaw`
     INSERT INTO api_keys (key_hash, prefix, name, contact, expires_at, created_by, created_at)
-    VALUES (${keyHash}, ${prefix}, ${name.trim()}, ${contact.trim()}, ${expires}, ${userId}, NOW())
+    VALUES (${keyHash}, ${prefix}, ${name.trim()}, ${contact.trim()}, ${expires}, ${userId}, CURRENT_TIMESTAMP)
   `;
 
   const [inserted] = await prisma.$queryRaw<{ id: number }[]>`

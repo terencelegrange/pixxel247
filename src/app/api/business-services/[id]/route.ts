@@ -18,7 +18,7 @@ export async function GET(_req: NextRequest, { params }: { params: Promise<{ id:
   if (!services[0]) return NextResponse.json({ error: "Business service not found" }, { status: 404 });
   const assets = await prisma.$queryRaw<{ id: string; name: string; short_code: string | null; category: string | null; monitor_configured: number; check_type: string | null }[]>`
     SELECT a.id, a.name, a.short_code, a.category,
-      IF(amc.id IS NULL, 0, 1) AS monitor_configured, amc.check_type
+      CASE WHEN amc.id IS NULL THEN 0 ELSE 1 END AS monitor_configured, amc.check_type
     FROM business_service_assets bsa
     JOIN assets a ON a.id = bsa.asset_id
     LEFT JOIN asset_monitor_configs amc ON amc.asset_id = a.id
@@ -42,7 +42,7 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
 
   try {
     await prisma.$transaction(async (tx) => {
-      const changed = await tx.$executeRaw`UPDATE business_services SET name = ${name}, description = ${description}, updated_at = NOW() WHERE id = ${serviceId}`;
+      const changed = await tx.$executeRaw`UPDATE business_services SET name = ${name}, description = ${description}, updated_at = CURRENT_TIMESTAMP WHERE id = ${serviceId}`;
       if (!changed) throw new Error("NOT_FOUND");
       await tx.$executeRaw`DELETE FROM business_service_assets WHERE service_id = ${serviceId}`;
       for (const assetId of assetIds) await tx.$executeRaw`INSERT INTO business_service_assets (service_id, asset_id) VALUES (${serviceId}, ${assetId})`;

@@ -25,7 +25,7 @@ export async function POST(req: NextRequest) {
     SELECT dt.id AS device_id, u.id, u.email, u.role, u.status, u.theme, u.name, u.avatar
     FROM device_tokens dt
     JOIN users u ON u.id = dt.user_id
-    WHERE dt.token_hash = ${hashDeviceToken(token)} AND u.email = ${email} AND dt.expires_at > NOW()
+    WHERE dt.token_hash = ${hashDeviceToken(token)} AND u.email = ${email} AND dt.expires_at > CURRENT_TIMESTAMP
     LIMIT 1
   `;
   const user = rows[0] ?? null;
@@ -37,7 +37,7 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "Your account is not active" }, { status: 403 });
   }
 
-  await prisma.$executeRaw`UPDATE device_tokens SET last_used = NOW() WHERE id = ${user.device_id}`;
+  await prisma.$executeRaw`UPDATE device_tokens SET last_used = CURRENT_TIMESTAMP WHERE id = ${user.device_id}`;
 
   const jwt = await signToken({ sub: String(user.id), email: user.email, role: user.role, name: user.name });
   await auditLog({ userId: user.id, action: "LOGIN", resource: "sessions", details: { method: "trusted_device" }, ip: getIp(req) });

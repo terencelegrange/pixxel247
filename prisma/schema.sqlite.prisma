@@ -1,0 +1,115 @@
+generator client {
+  provider = "prisma-client-js"
+  output   = "../src/generated/sqlite-client"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("SQLITE_DATABASE_URL")
+}
+
+model User {
+  id            Int        @id @default(autoincrement())
+  email         String     @unique
+  password_hash String
+  name          String?
+  role          String     @default("user")
+  status        String     @default("pending")
+  theme         String     @default("dark")
+  created_at    DateTime   @default(now())
+  updated_at    DateTime   @updatedAt
+  audit_logs    AuditLog[]
+
+  @@map("users")
+}
+
+model PixxelSyncConfig {
+  id                  Int       @id @default(autoincrement())
+  server_url          String
+  api_key             String?
+  last_sync_at        DateTime?
+  last_sync_status    String?
+  last_sync_message   String?
+  assets_synced_count Int       @default(0)
+  created_at          DateTime  @default(now())
+  updated_at          DateTime  @updatedAt
+
+  @@map("pixxel_sync_config")
+}
+
+model Asset {
+  id                String                 @id
+  pixxel_asset_id   String                 @unique
+  name              String
+  short_code        String?
+  category          String?
+  type              String?
+  lifecycle_status  String?
+  description       String?
+  business_owner    String?
+  technical_owner   String?
+  vendor            String?
+  app_url           String?
+  doc_url           String?
+  raw_sync_data     String?
+  created_at        DateTime               @default(now())
+  updated_at        DateTime               @updatedAt
+  monitor_config    AssetMonitorConfig?
+  business_services BusinessServiceAsset[]
+
+  @@map("assets")
+}
+
+model BusinessService {
+  id          Int                    @id @default(autoincrement())
+  name        String                 @unique
+  description String?
+  assets      BusinessServiceAsset[]
+  created_at  DateTime               @default(now())
+  updated_at  DateTime               @updatedAt
+
+  @@map("business_services")
+}
+
+model BusinessServiceAsset {
+  service_id Int
+  asset_id   String
+  service    BusinessService @relation(fields: [service_id], references: [id], onDelete: Cascade)
+  asset      Asset           @relation(fields: [asset_id], references: [id], onDelete: Cascade)
+
+  @@id([service_id, asset_id])
+  @@map("business_service_assets")
+}
+
+model AssetMonitorConfig {
+  id                        Int      @id @default(autoincrement())
+  asset_id                  String   @unique
+  asset                     Asset    @relation(fields: [asset_id], references: [id], onDelete: Cascade)
+  check_type                String
+  url                       String
+  method                    String   @default("GET")
+  expected_status           Int      @default(200)
+  headers_encrypted         String?
+  body_encrypted            String?
+  timeout_ms                Int      @default(10000)
+  statuspage_component_id   String?
+  statuspage_component_name String?
+  created_at                DateTime @default(now())
+  updated_at                DateTime @updatedAt
+
+  @@map("asset_monitor_configs")
+}
+
+model AuditLog {
+  id          Int      @id @default(autoincrement())
+  user_id     Int?
+  user        User?    @relation(fields: [user_id], references: [id], onDelete: SetNull)
+  action      String
+  resource    String
+  resource_id String?
+  details     String?
+  ip          String?
+  created_at  DateTime @default(now())
+
+  @@map("audit_logs")
+}

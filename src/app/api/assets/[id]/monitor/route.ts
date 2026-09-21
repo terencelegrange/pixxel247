@@ -90,7 +90,7 @@ export async function PUT(req: NextRequest, { params }: { params: Promise<{ id: 
       await prisma.$executeRaw`
         UPDATE asset_monitor_configs SET check_type = ${checkType}, url = ${url}, method = ${method}, expected_status = ${expectedStatus},
           headers_encrypted = ${savedHeaders}, body_encrypted = ${savedBody}, timeout_ms = ${timeoutMs},
-          statuspage_component_id = ${componentId}, statuspage_component_name = ${componentName}, updated_at = NOW()
+          statuspage_component_id = ${componentId}, statuspage_component_name = ${componentName}, updated_at = CURRENT_TIMESTAMP
         WHERE asset_id = ${assetId}
       `;
     } else {

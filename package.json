@@ -1,31 +1,32 @@
 {
-  "name": "boilerplate",
+  "name": "pixxel247",
   "version": "0.1.0",
   "private": true,
   "scripts": {
     "dev": "next dev -p 3336 --experimental-https",
     "build": "next build",
     "start": "next start -p 3336",
-    "db:generate": "prisma generate"
+    "db:generate": "prisma generate && prisma generate --schema prisma/schema.sqlite.prisma"
   },
   "dependencies": {
-    "next": "^15.3.0",
-    "react": "^19.0.0",
-    "react-dom": "^19.0.0",
     "@prisma/client": "^5.22.0",
     "bcryptjs": "^2.4.3",
-    "jose": "^5.9.6"
+    "jose": "^5.9.6",
+    "mysql2": "^3.24.4",
+    "next": "^15.3.0",
+    "react": "^19.0.0",
+    "react-dom": "^19.0.0"
   },
   "devDependencies": {
-    "typescript": "^5.6.3",
+    "@types/bcryptjs": "^2.4.6",
     "@types/node": "^22.7.5",
     "@types/react": "^19.0.0",
     "@types/react-dom": "^19.0.0",
-    "@types/bcryptjs": "^2.4.6",
+    "autoprefixer": "^10.4.20",
+    "postcss": "^8.4.47",
     "prisma": "^5.22.0",
     "tailwindcss": "^3.4.14",
-    "autoprefixer": "^10.4.20",
-    "postcss": "^8.4.47"
+    "typescript": "^5.6.3"
   },
   "allowScripts": {
     "@prisma/client@5.22.0": true,

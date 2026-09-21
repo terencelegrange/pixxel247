@@ -64,6 +64,15 @@ const spec = {
         },
       },
     },
+    "/setup/status": {
+      get: { tags: ["Setup"], summary: "Get first-run setup status", security: [], responses: { 200: { description: "Setup completion and selected database dialect" } } },
+    },
+    "/setup/test-db": {
+      post: { tags: ["Setup"], summary: "Test SQLite or MySQL configuration", security: [], responses: { 200: { description: "Database is usable" }, 400: { description: "Database configuration failed" } } },
+    },
+    "/setup/complete": {
+      post: { tags: ["Setup"], summary: "Complete first-run setup", description: "Initialises the selected database and creates the first administrator. Can only be run once.", security: [], responses: { 200: { description: "Setup complete" }, 400: { description: "Invalid or already configured" }, 500: { description: "Initialisation failed" } } },
+    },
     // ── Auth ────────────────────────────────────────────────────────────
     "/auth/login": {
       post: {

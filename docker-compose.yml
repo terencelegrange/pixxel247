@@ -13,6 +13,8 @@ services:
     env_file:
       # A non-.env name avoids Compose interpolation of bcrypt dollar signs.
       - pixxel247.env
+    volumes:
+      - pixxel247_data:/app/data
     healthcheck:
       test: ["CMD", "wget", "-qO-", "http://localhost:3336/api/health"]
       interval: 30s
@@ -24,3 +26,6 @@ services:
       options:
         max-size: "10m"
         max-file: "3"
+
+volumes:
+  pixxel247_data:

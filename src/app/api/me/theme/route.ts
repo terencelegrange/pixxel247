@@ -12,7 +12,7 @@ export async function PATCH(req: NextRequest) {
   }
 
   const userId = parseInt(session.sub, 10);
-  await prisma.$executeRaw`UPDATE users SET theme = ${theme}, updated_at = NOW() WHERE id = ${userId}`;
+  await prisma.$executeRaw`UPDATE users SET theme = ${theme}, updated_at = CURRENT_TIMESTAMP WHERE id = ${userId}`;
 
   const res = NextResponse.json({ ok: true });
   res.cookies.set(THEME_COOKIE, theme, { sameSite: "lax", path: "/", maxAge: 60 * 60 * 24 * 365 });

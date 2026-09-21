@@ -2,13 +2,57 @@ import { prisma } from "./prisma";
 import bcrypt from "bcryptjs";
 import { CHANGELOG } from "@/data/changelog";
 import { DEFAULT_ROLE_PERMISSIONS } from "@/data/nav";
+import { getConfiguredDialect } from "./setup";
 
-let initialized = false;
+let initializedDialect: string | null = null;
+
+async function initSqliteDb() {
+  const statements = [
+    `CREATE TABLE IF NOT EXISTS users (id INTEGER PRIMARY KEY AUTOINCREMENT, email TEXT NOT NULL UNIQUE, password_hash TEXT NOT NULL, name TEXT, role TEXT NOT NULL DEFAULT 'user', status TEXT NOT NULL DEFAULT 'pending', theme TEXT NOT NULL DEFAULT 'dark', avatar INTEGER, created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP, updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP)`,
+    `CREATE TABLE IF NOT EXISTS audit_logs (id INTEGER PRIMARY KEY AUTOINCREMENT, user_id INTEGER, action TEXT NOT NULL, resource TEXT NOT NULL, resource_id TEXT, details TEXT, ip TEXT, created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP, FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE SET NULL)`,
+    `CREATE TABLE IF NOT EXISTS feature_flags (key TEXT PRIMARY KEY, enabled INTEGER NOT NULL DEFAULT 1, label TEXT NOT NULL, description TEXT NOT NULL)`,
+    `CREATE TABLE IF NOT EXISTS changelog (id INTEGER PRIMARY KEY AUTOINCREMENT, date TEXT NOT NULL, description TEXT NOT NULL, created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP, UNIQUE(date, description))`,
+    `CREATE TABLE IF NOT EXISTS role_permissions (role TEXT NOT NULL, nav_key TEXT NOT NULL, PRIMARY KEY (role, nav_key))`,
+    `CREATE TABLE IF NOT EXISTS api_keys (id INTEGER PRIMARY KEY AUTOINCREMENT, key_hash TEXT NOT NULL, prefix TEXT NOT NULL UNIQUE, name TEXT NOT NULL, contact TEXT NOT NULL, expires_at DATETIME, created_by INTEGER, created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP, last_used DATETIME, active INTEGER NOT NULL DEFAULT 1, FOREIGN KEY (created_by) REFERENCES users(id) ON DELETE SET NULL)`,
+    `CREATE TABLE IF NOT EXISTS device_tokens (id INTEGER PRIMARY KEY AUTOINCREMENT, user_id INTEGER NOT NULL, token_hash TEXT NOT NULL UNIQUE, created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP, last_used DATETIME, expires_at DATETIME NOT NULL, FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE)`,
+    `CREATE TABLE IF NOT EXISTS pixxel_sync_config (id INTEGER PRIMARY KEY AUTOINCREMENT, server_url TEXT NOT NULL, api_key TEXT, last_sync_at DATETIME, last_sync_status TEXT, last_sync_message TEXT, assets_synced_count INTEGER NOT NULL DEFAULT 0, created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP, updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP)`,
+    `CREATE TABLE IF NOT EXISTS assets (id TEXT PRIMARY KEY, pixxel_asset_id TEXT NOT NULL UNIQUE, name TEXT NOT NULL, short_code TEXT, category TEXT, type TEXT, lifecycle_status TEXT, description TEXT, business_owner TEXT, technical_owner TEXT, vendor TEXT, app_url TEXT, doc_url TEXT, raw_sync_data TEXT, created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP, updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP)`,
+    `CREATE TABLE IF NOT EXISTS business_services (id INTEGER PRIMARY KEY AUTOINCREMENT, name TEXT NOT NULL UNIQUE, description TEXT, created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP, updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP)`,
+    `CREATE TABLE IF NOT EXISTS business_service_assets (service_id INTEGER NOT NULL, asset_id TEXT NOT NULL, PRIMARY KEY (service_id, asset_id), FOREIGN KEY (service_id) REFERENCES business_services(id) ON DELETE CASCADE, FOREIGN KEY (asset_id) REFERENCES assets(id) ON DELETE CASCADE)`,
+    `CREATE TABLE IF NOT EXISTS asset_monitor_configs (id INTEGER PRIMARY KEY AUTOINCREMENT, asset_id TEXT NOT NULL UNIQUE, check_type TEXT NOT NULL, url TEXT NOT NULL, method TEXT NOT NULL DEFAULT 'GET', expected_status INTEGER NOT NULL DEFAULT 200, headers_encrypted TEXT, body_encrypted TEXT, timeout_ms INTEGER NOT NULL DEFAULT 10000, statuspage_component_id TEXT, statuspage_component_name TEXT, created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP, updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP, FOREIGN KEY (asset_id) REFERENCES assets(id) ON DELETE CASCADE)`,
+  ];
+  for (const statement of statements) await prisma.$executeRawUnsafe(statement);
+
+  for (const entry of CHANGELOG) {
+    await prisma.$executeRaw`INSERT OR IGNORE INTO changelog (date, description) VALUES (${entry.date}, ${entry.description})`;
+  }
+  const defaultFlags = [
+    { key: "signup", label: "Sign Up", description: "Allow new users to register an account" },
+    { key: "dashboard", label: "Dashboard", description: "Show the dashboard page in the navigation" },
+    { key: "menu", label: "Navigation Menu", description: "Show navigation links in the sidebar" },
+  ];
+  for (const flag of defaultFlags) {
+    await prisma.$executeRaw`INSERT OR IGNORE INTO feature_flags (key, enabled, label, description) VALUES (${flag.key}, 1, ${flag.label}, ${flag.description})`;
+  }
+  for (const [role, keys] of Object.entries(DEFAULT_ROLE_PERMISSIONS)) {
+    for (const navKey of keys) await prisma.$executeRaw`INSERT OR IGNORE INTO role_permissions (role, nav_key) VALUES (${role}, ${navKey})`;
+  }
+}
+
+export function resetInitDb() {
+  initializedDialect = null;
+}
 
 export async function initDb() {
-  if (initialized) return;
+  const dialect = getConfiguredDialect();
+  if (initializedDialect === dialect) return;
 
   try {
+    if (dialect === "sqlite") {
+      await initSqliteDb();
+      initializedDialect = dialect;
+      return;
+    }
     await prisma.$executeRaw`
       CREATE TABLE IF NOT EXISTS \`users\` (
         \`id\`            INT NOT NULL AUTO_INCREMENT,
@@ -236,12 +280,12 @@ export async function initDb() {
       if (existing.length === 0) {
         await prisma.$executeRaw`
           INSERT INTO users (email, password_hash, role, status, created_at, updated_at)
-          VALUES (${adminEmail}, ${adminHash}, 'admin', 'approved', NOW(), NOW())
+          VALUES (${adminEmail}, ${adminHash}, 'admin', 'approved', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
         `;
       }
     }
 
-    initialized = true;
+    initializedDialect = dialect;
   } catch (e) {
     console.error("[initDb] failed:", e);
     throw e;

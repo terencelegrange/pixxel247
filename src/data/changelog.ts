@@ -9,6 +9,7 @@
  * Format: { date: "YYYY-MM-DD", description: "Short description of the change" }
  */
 export const CHANGELOG: { date: string; description: string }[] = [
+  { date: "2026-09-21", description: "Added Pixxel-style first-run setup with runtime-selectable SQLite or MySQL storage and administrator creation" },
   { date: "2026-09-21", description: "Added Docker, Jenkins, Gitea, GitHub, Docker Hub, and Proxmox deployment configuration with a database-backed health endpoint" },
   { date: "2026-09-21", description: "Added an inline Test action for asset monitoring configurations with live status, response code, timing, and diagnostic feedback" },
   { date: "2026-09-21", description: "Added business service composition, encrypted per-asset health checks with Statuspage discovery, and on-demand live service verification" },

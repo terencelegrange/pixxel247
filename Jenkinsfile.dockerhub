@@ -34,7 +34,7 @@ pipeline {
             steps {
                 sh '''
                     npm ci
-                    npx prisma generate
+                    SQLITE_DATABASE_URL=file:/tmp/pixxel247-build.db npm run db:generate
                     npx tsc --noEmit
                     npm run build
                 '''

@@ -23,10 +23,16 @@ export default function LoginPage() {
   const [loading, setLoading] = useState(false);
 
   useEffect(() => {
-    const remembered = getRememberedProfiles();
-    setProfiles(remembered);
-    setView(remembered.length > 0 ? "profiles" : "form");
-  }, []);
+    fetch("/api/setup/status")
+      .then((response) => response.json())
+      .then((data) => {
+        if (!data.complete) return router.replace("/setup");
+        const remembered = getRememberedProfiles();
+        setProfiles(remembered);
+        setView(remembered.length > 0 ? "profiles" : "form");
+      })
+      .catch(() => {});
+  }, [router]);
 
   async function performLogin(loginEmail: string, loginPassword: string, trust: boolean) {
     setError("");

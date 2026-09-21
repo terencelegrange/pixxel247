@@ -9,7 +9,7 @@ export async function GET() {
   if (!session) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
   const rows = await prisma.$queryRaw<Array<Record<string, unknown> & { monitor_configured: number }>>`
-    SELECT a.*, IF(amc.id IS NULL, 0, 1) AS monitor_configured, amc.check_type
+    SELECT a.*, CASE WHEN amc.id IS NULL THEN 0 ELSE 1 END AS monitor_configured, amc.check_type
     FROM assets a
     LEFT JOIN asset_monitor_configs amc ON amc.asset_id = a.id
     ORDER BY a.name ASC

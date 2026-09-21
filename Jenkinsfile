@@ -22,7 +22,7 @@ pipeline {
             steps {
                 sh '''
                     npm ci --registry=${NPM_REGISTRY}
-                    npx prisma generate
+                    SQLITE_DATABASE_URL=file:/tmp/pixxel247-build.db npm run db:generate
                     npx tsc --noEmit
                     npm run build
                 '''
@@ -32,20 +32,15 @@ pipeline {
         stage('Write env file') {
             steps {
                 withCredentials([
-                    string(credentialsId: 'PIXXEL247_DATABASE_URL', variable: 'APP_DATABASE_URL'),
                     string(credentialsId: 'PIXXEL247_JWT_SECRET', variable: 'APP_JWT_SECRET'),
-                    string(credentialsId: 'PIXXEL247_MONITORING_KEY', variable: 'APP_MONITORING_KEY'),
-                    string(credentialsId: 'PIXXEL247_ADMIN_EMAIL', variable: 'APP_ADMIN_EMAIL'),
-                    string(credentialsId: 'PIXXEL247_ADMIN_PASSWORD_HASH', variable: 'APP_ADMIN_PASSWORD_HASH')
+                    string(credentialsId: 'PIXXEL247_MONITORING_KEY', variable: 'APP_MONITORING_KEY')
                 ]) {
                     sh '''
                         umask 077
                         {
-                            printf 'DATABASE_URL=%s\n' "$APP_DATABASE_URL"
                             printf 'JWT_SECRET=%s\n' "$APP_JWT_SECRET"
                             printf 'MONITORING_ENCRYPTION_KEY=%s\n' "$APP_MONITORING_KEY"
-                            printf 'ADMIN_EMAIL=%s\n' "$APP_ADMIN_EMAIL"
-                            printf 'ADMIN_PASSWORD_HASH=%s\n' "$APP_ADMIN_PASSWORD_HASH"
+                            printf 'PIXXEL247_DATA_DIR=data\n'
                         } > pixxel247.env
                     '''
                     sshagent(credentials: ['PROXMOX_APPS_KEY']) {

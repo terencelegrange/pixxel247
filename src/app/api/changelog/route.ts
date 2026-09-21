@@ -9,11 +9,11 @@ export async function GET() {
 
   await initDb();
 
-  const entries = await prisma.$queryRaw<{ id: number; date: string; description: string }[]>`
-    SELECT id, DATE_FORMAT(\`date\`, '%Y-%m-%d') AS \`date\`, description
+  const entries = await prisma.$queryRaw<{ id: number; date: string | Date; description: string }[]>`
+    SELECT id, date, description
     FROM changelog
     ORDER BY \`date\` DESC, id DESC
   `;
 
-  return NextResponse.json(entries);
+  return NextResponse.json(entries.map((entry) => ({ ...entry, date: entry.date instanceof Date ? entry.date.toISOString().slice(0, 10) : String(entry.date).slice(0, 10) })));
 }

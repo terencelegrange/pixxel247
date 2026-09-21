@@ -23,7 +23,7 @@ export async function auditLog(opts: AuditOptions): Promise<void> {
         ${resourceId},
         ${details},
         ${opts.ip ?? null},
-        NOW()
+        CURRENT_TIMESTAMP
       )
     `;
   } catch (e) {

@@ -32,7 +32,7 @@ export async function POST(req: NextRequest) {
 
   await prisma.$executeRaw`
     INSERT INTO users (email, password_hash, name, role, status, created_at, updated_at)
-    VALUES (${email}, ${hash}, ${safeName}, 'user', 'pending', NOW(), NOW())
+    VALUES (${email}, ${hash}, ${safeName}, 'user', 'pending', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
   `;
 
   const inserted = await prisma.$queryRaw<{ id: number }[]>`
