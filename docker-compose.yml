@@ -8,6 +8,9 @@ services:
     image: pixxel247:latest
     container_name: pixxel247
     restart: unless-stopped
+    # This is a single-container app. Reuse Docker's built-in bridge instead of
+    # consuming another user-defined subnet on the shared Proxmox host.
+    network_mode: bridge
     ports:
       - "7003:3336"
     env_file:
