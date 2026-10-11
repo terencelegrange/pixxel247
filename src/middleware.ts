@@ -10,6 +10,12 @@ export async function middleware(req: NextRequest) {
     return NextResponse.next();
   }
 
+  // Allow API requests with Authorization: Bearer header to proceed to route handlers (for API key / bearer validation)
+  const authHeader = req.headers.get("authorization");
+  if (pathname.startsWith("/api/") && authHeader?.startsWith("Bearer ")) {
+    return NextResponse.next();
+  }
+
   const token = req.cookies.get("bp_token")?.value;
   if (!token || !(await verifyToken(token))) {
     if (pathname.startsWith("/api/")) {

@@ -662,6 +662,115 @@ const spec = {
       },
     },
 
+    // ── Alert Destinations ──────────────────────────────────────────────
+    "/alert-destinations": {
+      get: {
+        tags: ["Alerts"],
+        summary: "List alert destinations",
+        description: "Returns all configured alert channels (Discord, Email, Webhooks, Slack).",
+        responses: {
+          200: { description: "List of alert destinations" },
+          401: { description: "Not authenticated" },
+        },
+      },
+      post: {
+        tags: ["Alerts"],
+        summary: "Create alert destination",
+        description: "Creates a new alert destination channel.",
+        responses: {
+          200: { description: "Created successfully" },
+          400: { description: "Validation error" },
+          401: { description: "Not authenticated" },
+          403: { description: "Admin or editor role required" },
+        },
+      },
+    },
+    "/alert-destinations/{id}": {
+      get: {
+        tags: ["Alerts"],
+        summary: "Get alert destination",
+        description: "Returns destination details and decrypted configuration for editing.",
+        responses: {
+          200: { description: "Alert destination details" },
+          404: { description: "Destination not found" },
+        },
+      },
+      patch: {
+        tags: ["Alerts"],
+        summary: "Update alert destination",
+        description: "Updates destination parameters or active state.",
+        responses: {
+          200: { description: "Updated successfully" },
+          404: { description: "Destination not found" },
+        },
+      },
+      delete: {
+        tags: ["Alerts"],
+        summary: "Delete alert destination",
+        description: "Deletes an alert destination.",
+        responses: {
+          200: { description: "Deleted successfully" },
+          403: { description: "Admin role required" },
+        },
+      },
+    },
+    "/alert-destinations/{id}/test": {
+      post: {
+        tags: ["Alerts"],
+        summary: "Test alert destination",
+        description: "Sends a sample notification to verify webhook/email delivery.",
+        responses: {
+          200: { description: "Test delivered" },
+          400: { description: "Delivery failed" },
+        },
+      },
+    },
+
+    // ── Service Status & Continual Monitoring ───────────────────────────
+    "/service-status/{serviceId}/checks": {
+      get: {
+        tags: ["Service Status"],
+        summary: "Service uptime analytics and check history",
+        description: "Calculates 90-segment uptime bars, latency trends, and constituent asset statuses over requested time window.",
+        parameters: [
+          { name: "serviceId", in: "path", required: true, schema: { type: "integer" } },
+          { name: "minutes", in: "query", required: false, schema: { type: "integer", default: 1440 } },
+        ],
+        responses: {
+          200: { description: "Service status payload with uptime bars and asset checks" },
+          404: { description: "Service not found" },
+        },
+      },
+    },
+    "/service-status/{serviceId}/alerts": {
+      get: {
+        tags: ["Service Status"],
+        summary: "Get alert destinations for service",
+        description: "Returns assigned alert destination IDs and available destinations for a business service.",
+        responses: {
+          200: { description: "Assigned alert destinations" },
+        },
+      },
+      put: {
+        tags: ["Service Status"],
+        summary: "Update alert destinations for service",
+        description: "Assigns which alert destinations receive outage notifications for this service.",
+        responses: {
+          200: { description: "Updated successfully" },
+        },
+      },
+    },
+    "/service-status/{serviceId}/run": {
+      post: {
+        tags: ["Service Status"],
+        summary: "Trigger immediate check run",
+        description: "Executes an immediate check on all monitored assets for a business service.",
+        responses: {
+          200: { description: "Executed check results" },
+        },
+      },
+    },
+
     // ── OpenAPI ─────────────────────────────────────────────────────────
     "/openapi": {
       get: {

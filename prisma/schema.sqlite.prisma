@@ -56,17 +56,19 @@ model Asset {
   updated_at        DateTime               @updatedAt
   monitor_config    AssetMonitorConfig?
   business_services BusinessServiceAsset[]
+  checks            AssetCheck[]
 
   @@map("assets")
 }
 
 model BusinessService {
-  id          Int                    @id @default(autoincrement())
-  name        String                 @unique
-  description String?
-  assets      BusinessServiceAsset[]
-  created_at  DateTime               @default(now())
-  updated_at  DateTime               @updatedAt
+  id                 Int                       @id @default(autoincrement())
+  name               String                    @unique
+  description        String?
+  assets             BusinessServiceAsset[]
+  alert_destinations ServiceAlertDestination[]
+  created_at         DateTime                  @default(now())
+  updated_at         DateTime                  @updatedAt
 
   @@map("business_services")
 }
@@ -92,12 +94,54 @@ model AssetMonitorConfig {
   headers_encrypted         String?
   body_encrypted            String?
   timeout_ms                Int      @default(10000)
+  interval_seconds          Int      @default(60)
+  enabled                   Boolean  @default(true)
   statuspage_component_id   String?
   statuspage_component_name String?
   created_at                DateTime @default(now())
   updated_at                DateTime @updatedAt
 
   @@map("asset_monitor_configs")
+}
+
+model AssetCheck {
+  id               Int      @id @default(autoincrement())
+  asset_id         String
+  is_up            Boolean
+  status           String
+  status_code      Int?
+  response_time_ms Int?
+  message          String?
+  error            String?
+  checked_at       DateTime @default(now())
+  asset            Asset    @relation(fields: [asset_id], references: [id], onDelete: Cascade)
+
+  @@index([asset_id, checked_at])
+  @@index([checked_at])
+  @@map("asset_checks")
+}
+
+model AlertDestination {
+  id               Int                       @id @default(autoincrement())
+  name             String
+  type             String
+  config_encrypted String
+  enabled          Boolean                   @default(true)
+  created_at       DateTime                  @default(now())
+  updated_at       DateTime                  @updatedAt
+  services         ServiceAlertDestination[]
+
+  @@map("alert_destinations")
+}
+
+model ServiceAlertDestination {
+  service_id     Int
+  destination_id Int
+  service        BusinessService  @relation(fields: [service_id], references: [id], onDelete: Cascade)
+  destination    AlertDestination @relation(fields: [destination_id], references: [id], onDelete: Cascade)
+
+  @@id([service_id, destination_id])
+  @@map("service_alert_destinations")
 }
 
 model AuditLog {

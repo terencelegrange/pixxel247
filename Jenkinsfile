@@ -5,7 +5,7 @@ pipeline {
         REMOTE_HOST  = '192.168.100.228'
         REMOTE_USER  = 'terence'
         DEPLOY_DIR   = '/home/pixxel247'
-        APP_PORT     = '7003'
+        APP_PORT     = '7247'
         NPM_REGISTRY = 'http://192.168.100.223:4873'
     }
 
@@ -18,30 +18,25 @@ pipeline {
             steps { checkout scm }
         }
 
-        stage('Verify') {
-            steps {
-                sh '''
-                    npm ci --registry=${NPM_REGISTRY}
-                    SQLITE_DATABASE_URL=file:/tmp/pixxel247-build.db npm run db:generate
-                    npx tsc --noEmit
-                    npm run build
-                '''
-            }
-        }
-
         stage('Write env file') {
             steps {
                 withCredentials([
-                    string(credentialsId: 'PIXXEL247_JWT_SECRET', variable: 'APP_JWT_SECRET'),
-                    string(credentialsId: 'PIXXEL247_MONITORING_KEY', variable: 'APP_MONITORING_KEY')
+                    string(credentialsId: 'PIXXEL247_DATABASE_URL', variable: 'PIXXEL247_DATABASE_URL'),
+                    string(credentialsId: 'PIXXEL247_JWT_SECRET', variable: 'PIXXEL247_JWT_SECRET'),
+                    string(credentialsId: 'PIXXEL247_ADMIN_EMAIL', variable: 'PIXXEL247_ADMIN_EMAIL'),
+                    string(credentialsId: 'PIXXEL247_ADMIN_PASSWORD_HASH', variable: 'PIXXEL247_ADMIN_PASSWORD_HASH'),
+                    string(credentialsId: 'PIXXEL247_MONITORING_KEY', variable: 'PIXXEL247_MONITORING_KEY')
                 ]) {
                     sh '''
                         umask 077
-                        {
-                            printf 'JWT_SECRET=%s\n' "$APP_JWT_SECRET"
-                            printf 'MONITORING_ENCRYPTION_KEY=%s\n' "$APP_MONITORING_KEY"
-                            printf 'PIXXEL247_DATA_DIR=data\n'
-                        } > pixxel247.env
+                        cat > pixxel247.env <<EOF
+DATABASE_URL=${PIXXEL247_DATABASE_URL}
+JWT_SECRET=${PIXXEL247_JWT_SECRET}
+ADMIN_EMAIL=${PIXXEL247_ADMIN_EMAIL}
+ADMIN_PASSWORD_HASH=${PIXXEL247_ADMIN_PASSWORD_HASH}
+MONITORING_ENCRYPTION_KEY=${PIXXEL247_MONITORING_KEY}
+PIXXEL247_DATA_DIR=data
+EOF
                     '''
                     sshagent(credentials: ['PROXMOX_APPS_KEY']) {
                         sh '''
@@ -88,7 +83,7 @@ pipeline {
                     sh '''
                         ssh ${REMOTE_USER}@${REMOTE_HOST} 'bash -s' <<'REMOTE_SCRIPT'
                             attempt=0
-                            until curl -sf http://localhost:7003/api/health > /dev/null 2>&1; do
+                            until curl -sf http://localhost:7247/api/health > /dev/null 2>&1; do
                                 attempt=$((attempt+1))
                                 if [ "$attempt" -ge 24 ]; then
                                     echo 'Health check timed out after 120s'

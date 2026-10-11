@@ -19,9 +19,28 @@ async function initSqliteDb() {
     `CREATE TABLE IF NOT EXISTS assets (id TEXT PRIMARY KEY, pixxel_asset_id TEXT NOT NULL UNIQUE, name TEXT NOT NULL, short_code TEXT, category TEXT, type TEXT, lifecycle_status TEXT, description TEXT, business_owner TEXT, technical_owner TEXT, vendor TEXT, app_url TEXT, doc_url TEXT, raw_sync_data TEXT, created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP, updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP)`,
     `CREATE TABLE IF NOT EXISTS business_services (id INTEGER PRIMARY KEY AUTOINCREMENT, name TEXT NOT NULL UNIQUE, description TEXT, created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP, updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP)`,
     `CREATE TABLE IF NOT EXISTS business_service_assets (service_id INTEGER NOT NULL, asset_id TEXT NOT NULL, PRIMARY KEY (service_id, asset_id), FOREIGN KEY (service_id) REFERENCES business_services(id) ON DELETE CASCADE, FOREIGN KEY (asset_id) REFERENCES assets(id) ON DELETE CASCADE)`,
-    `CREATE TABLE IF NOT EXISTS asset_monitor_configs (id INTEGER PRIMARY KEY AUTOINCREMENT, asset_id TEXT NOT NULL UNIQUE, check_type TEXT NOT NULL, url TEXT NOT NULL, method TEXT NOT NULL DEFAULT 'GET', expected_status INTEGER NOT NULL DEFAULT 200, headers_encrypted TEXT, body_encrypted TEXT, timeout_ms INTEGER NOT NULL DEFAULT 10000, statuspage_component_id TEXT, statuspage_component_name TEXT, created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP, updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP, FOREIGN KEY (asset_id) REFERENCES assets(id) ON DELETE CASCADE)`,
+    `CREATE TABLE IF NOT EXISTS asset_monitor_configs (id INTEGER PRIMARY KEY AUTOINCREMENT, asset_id TEXT NOT NULL UNIQUE, check_type TEXT NOT NULL, url TEXT NOT NULL, method TEXT NOT NULL DEFAULT 'GET', expected_status INTEGER NOT NULL DEFAULT 200, headers_encrypted TEXT, body_encrypted TEXT, timeout_ms INTEGER NOT NULL DEFAULT 10000, interval_seconds INTEGER NOT NULL DEFAULT 60, enabled INTEGER NOT NULL DEFAULT 1, statuspage_component_id TEXT, statuspage_component_name TEXT, created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP, updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP, FOREIGN KEY (asset_id) REFERENCES assets(id) ON DELETE CASCADE)`,
+    `CREATE TABLE IF NOT EXISTS asset_checks (id INTEGER PRIMARY KEY AUTOINCREMENT, asset_id TEXT NOT NULL, is_up INTEGER NOT NULL, status TEXT NOT NULL, status_code INTEGER, response_time_ms INTEGER, message TEXT, error TEXT, checked_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP, FOREIGN KEY (asset_id) REFERENCES assets(id) ON DELETE CASCADE)`,
+    `CREATE INDEX IF NOT EXISTS idx_asset_checks_asset_time ON asset_checks (asset_id, checked_at)`,
+    `CREATE INDEX IF NOT EXISTS idx_asset_checks_time ON asset_checks (checked_at)`,
+    `CREATE TABLE IF NOT EXISTS alert_destinations (id INTEGER PRIMARY KEY AUTOINCREMENT, name TEXT NOT NULL, type TEXT NOT NULL, config_encrypted TEXT NOT NULL, enabled INTEGER NOT NULL DEFAULT 1, created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP, updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP)`,
+    `CREATE TABLE IF NOT EXISTS service_alert_destinations (service_id INTEGER NOT NULL, destination_id INTEGER NOT NULL, PRIMARY KEY (service_id, destination_id), FOREIGN KEY (service_id) REFERENCES business_services(id) ON DELETE CASCADE, FOREIGN KEY (destination_id) REFERENCES alert_destinations(id) ON DELETE CASCADE)`,
   ];
   for (const statement of statements) await prisma.$executeRawUnsafe(statement);
+
+  // Check for newly added columns in SQLite
+  try {
+    const columns = await prisma.$queryRaw<{ name: string }[]>`PRAGMA table_info(asset_monitor_configs)`;
+    const columnNames = new Set(columns.map((c) => c.name));
+    if (!columnNames.has("interval_seconds")) {
+      await prisma.$executeRawUnsafe(`ALTER TABLE asset_monitor_configs ADD COLUMN interval_seconds INTEGER NOT NULL DEFAULT 60`);
+    }
+    if (!columnNames.has("enabled")) {
+      await prisma.$executeRawUnsafe(`ALTER TABLE asset_monitor_configs ADD COLUMN enabled INTEGER NOT NULL DEFAULT 1`);
+    }
+  } catch (e) {
+    console.error("[initSqliteDb] failed to alter columns:", e);
+  }
 
   for (const entry of CHANGELOG) {
     await prisma.$executeRaw`INSERT OR IGNORE INTO changelog (date, description) VALUES (${entry.date}, ${entry.description})`;
@@ -251,6 +270,8 @@ export async function initDb() {
         \`headers_encrypted\` TEXT NULL,
         \`body_encrypted\` TEXT NULL,
         \`timeout_ms\` INT NOT NULL DEFAULT 10000,
+        \`interval_seconds\` INT NOT NULL DEFAULT 60,
+        \`enabled\` TINYINT(1) NOT NULL DEFAULT 1,
         \`statuspage_component_id\` VARCHAR(100) NULL,
         \`statuspage_component_name\` VARCHAR(255) NULL,
         \`created_at\` DATETIME(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3),
@@ -258,6 +279,69 @@ export async function initDb() {
         PRIMARY KEY (\`id\`),
         UNIQUE KEY \`asset_monitor_configs_asset_id_key\` (\`asset_id\`),
         CONSTRAINT \`asset_monitor_configs_asset_id_fk\` FOREIGN KEY (\`asset_id\`) REFERENCES \`assets\` (\`id\`) ON DELETE CASCADE
+      ) DEFAULT CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci
+    `;
+
+    // Safe migration check for MySQL columns in asset_monitor_configs
+    const intervalExists = await prisma.$queryRaw<{ cnt: bigint }[]>`
+      SELECT COUNT(*) AS cnt FROM INFORMATION_SCHEMA.COLUMNS
+      WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'asset_monitor_configs' AND COLUMN_NAME = 'interval_seconds'
+    `;
+    if (Number(intervalExists[0]?.cnt || 0) === 0) {
+      await prisma.$executeRaw`
+        ALTER TABLE \`asset_monitor_configs\` ADD COLUMN \`interval_seconds\` INT NOT NULL DEFAULT 60
+      `;
+    }
+
+    const enabledExists = await prisma.$queryRaw<{ cnt: bigint }[]>`
+      SELECT COUNT(*) AS cnt FROM INFORMATION_SCHEMA.COLUMNS
+      WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'asset_monitor_configs' AND COLUMN_NAME = 'enabled'
+    `;
+    if (Number(enabledExists[0]?.cnt || 0) === 0) {
+      await prisma.$executeRaw`
+        ALTER TABLE \`asset_monitor_configs\` ADD COLUMN \`enabled\` TINYINT(1) NOT NULL DEFAULT 1
+      `;
+    }
+
+    await prisma.$executeRaw`
+      CREATE TABLE IF NOT EXISTS \`asset_checks\` (
+        \`id\` INT NOT NULL AUTO_INCREMENT,
+        \`asset_id\` VARCHAR(64) NOT NULL,
+        \`is_up\` TINYINT(1) NOT NULL,
+        \`status\` VARCHAR(20) NOT NULL,
+        \`status_code\` INT NULL,
+        \`response_time_ms\` INT NULL,
+        \`message\` TEXT NULL,
+        \`error\` TEXT NULL,
+        \`checked_at\` DATETIME(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3),
+        PRIMARY KEY (\`id\`),
+        KEY \`asset_checks_asset_id_checked_at_idx\` (\`asset_id\`, \`checked_at\`),
+        KEY \`asset_checks_checked_at_idx\` (\`checked_at\`),
+        CONSTRAINT \`asset_checks_asset_id_fk\` FOREIGN KEY (\`asset_id\`) REFERENCES \`assets\` (\`id\`) ON DELETE CASCADE
+      ) DEFAULT CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci
+    `;
+
+    await prisma.$executeRaw`
+      CREATE TABLE IF NOT EXISTS \`alert_destinations\` (
+        \`id\` INT NOT NULL AUTO_INCREMENT,
+        \`name\` VARCHAR(200) NOT NULL,
+        \`type\` VARCHAR(30) NOT NULL,
+        \`config_encrypted\` TEXT NOT NULL,
+        \`enabled\` TINYINT(1) NOT NULL DEFAULT 1,
+        \`created_at\` DATETIME(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3),
+        \`updated_at\` DATETIME(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3) ON UPDATE CURRENT_TIMESTAMP(3),
+        PRIMARY KEY (\`id\`)
+      ) DEFAULT CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci
+    `;
+
+    await prisma.$executeRaw`
+      CREATE TABLE IF NOT EXISTS \`service_alert_destinations\` (
+        \`service_id\` INT NOT NULL,
+        \`destination_id\` INT NOT NULL,
+        PRIMARY KEY (\`service_id\`, \`destination_id\`),
+        KEY \`service_alert_destinations_destination_id_fk\` (\`destination_id\`),
+        CONSTRAINT \`service_alert_destinations_service_id_fk\` FOREIGN KEY (\`service_id\`) REFERENCES \`business_services\` (\`id\`) ON DELETE CASCADE,
+        CONSTRAINT \`service_alert_destinations_destination_id_fk\` FOREIGN KEY (\`destination_id\`) REFERENCES \`alert_destinations\` (\`id\`) ON DELETE CASCADE
       ) DEFAULT CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci
     `;
 

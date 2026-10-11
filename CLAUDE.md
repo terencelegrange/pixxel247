@@ -3,7 +3,7 @@
 ## Architecture Overview
 
 **Stack:** Next.js 15 (App Router) · TypeScript · Tailwind CSS v3 (darkMode: "class") · Prisma 5 · MySQL/MariaDB or SQLite · JWT (jose) · bcryptjs
-**Port:** 3336 in the app container; 7003 on the deployed Proxmox host
+**Port:** 3336 in the app container; 7247 on the deployed Proxmox host
 **Database:** Selected by the user in the first-run setup wizard and persisted in `data/site.config.json`
 
 ### Directory Structure

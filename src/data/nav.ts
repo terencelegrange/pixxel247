@@ -38,6 +38,12 @@ export const NAV_ITEMS: NavItem[] = [
     icon: "M6.429 9.75L2.25 12l4.179 2.25m0-4.5L12 12.75l5.571-3m-11.142 0L2.25 7.5 12 2.25l9.75 5.25-4.179 2.25m0 0L21.75 12l-4.179 2.25m0 0L12 17.25l-5.571-3m11.142 0l4.179 2.25L12 21.75 2.25 16.5l4.179-2.25",
   },
   {
+    key: "service-status",
+    href: "/status",
+    label: "Service Status",
+    icon: "M2.25 18L9 11.25l4.306 4.307a11.95 11.95 0 015.814-5.519l2.74-1.22m0 0l-5.94-2.28m5.94 2.28l-2.28 5.941",
+  },
+  {
     key: "verification",
     href: "/verify",
     label: "Live Verification",
@@ -61,7 +67,7 @@ export const ROLES = [
 
 /** Default permissions: which nav keys each role can access */
 export const DEFAULT_ROLE_PERMISSIONS: Record<string, string[]> = {
-  viewer: ["dashboard", "assets", "business-services", "verification"],
-  editor: ["dashboard", "assets", "business-services", "verification"],
-  admin:  ["dashboard", "assets", "business-services", "verification", "settings"],
+  viewer: ["dashboard", "assets", "business-services", "service-status", "verification"],
+  editor: ["dashboard", "assets", "business-services", "service-status", "verification"],
+  admin:  ["dashboard", "assets", "business-services", "service-status", "verification", "settings"],
 };

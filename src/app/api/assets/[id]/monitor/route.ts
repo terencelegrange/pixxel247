@@ -13,6 +13,8 @@ interface ConfigRow {
   method: string;
   expected_status: number;
   timeout_ms: number;
+  interval_seconds: number;
+  enabled: boolean | number;
   statuspage_component_id: string | null;
   statuspage_component_name: string | null;
   headers_encrypted: string | null;
@@ -39,6 +41,8 @@ export async function GET(_req: NextRequest, { params }: { params: Promise<{ id:
       method: config.method,
       expected_status: config.expected_status,
       timeout_ms: config.timeout_ms,
+      interval_seconds: config.interval_seconds ?? 60,
+      enabled: Boolean(config.enabled ?? true),
       statuspage_component_id: config.statuspage_component_id,
       statuspage_component_name: config.statuspage_component_name,
       has_headers: Boolean(config.headers_encrypted),
@@ -65,6 +69,9 @@ export async function PUT(req: NextRequest, { params }: { params: Promise<{ id: 
     if (!Number.isInteger(expectedStatus) || expectedStatus < 100 || expectedStatus > 599) throw new Error("Expected status must be between 100 and 599");
     const timeoutMs = Number(body.timeout_ms ?? 10000);
     if (!Number.isInteger(timeoutMs) || timeoutMs < 1000 || timeoutMs > 30000) throw new Error("Timeout must be between 1,000 and 30,000 ms");
+    const intervalSeconds = Number(body.interval_seconds ?? 60);
+    if (!Number.isInteger(intervalSeconds) || intervalSeconds < 10 || intervalSeconds > 86400) throw new Error("Interval must be between 10 and 86400 seconds");
+    const enabled = body.enabled === false ? 0 : 1;
     const componentId = checkType === "statuspage" && typeof body.statuspage_component_id === "string" ? body.statuspage_component_id.trim() : null;
     const componentName = checkType === "statuspage" && typeof body.statuspage_component_name === "string" ? body.statuspage_component_name.trim() : null;
     if (checkType === "statuspage" && !componentId) throw new Error("Select a Statuspage component");
@@ -90,16 +97,17 @@ export async function PUT(req: NextRequest, { params }: { params: Promise<{ id: 
       await prisma.$executeRaw`
         UPDATE asset_monitor_configs SET check_type = ${checkType}, url = ${url}, method = ${method}, expected_status = ${expectedStatus},
           headers_encrypted = ${savedHeaders}, body_encrypted = ${savedBody}, timeout_ms = ${timeoutMs},
+          interval_seconds = ${intervalSeconds}, enabled = ${enabled},
           statuspage_component_id = ${componentId}, statuspage_component_name = ${componentName}, updated_at = CURRENT_TIMESTAMP
         WHERE asset_id = ${assetId}
       `;
     } else {
       await prisma.$executeRaw`
-        INSERT INTO asset_monitor_configs (asset_id, check_type, url, method, expected_status, headers_encrypted, body_encrypted, timeout_ms, statuspage_component_id, statuspage_component_name)
-        VALUES (${assetId}, ${checkType}, ${url}, ${method}, ${expectedStatus}, ${savedHeaders}, ${savedBody}, ${timeoutMs}, ${componentId}, ${componentName})
+        INSERT INTO asset_monitor_configs (asset_id, check_type, url, method, expected_status, headers_encrypted, body_encrypted, timeout_ms, interval_seconds, enabled, statuspage_component_id, statuspage_component_name)
+        VALUES (${assetId}, ${checkType}, ${url}, ${method}, ${expectedStatus}, ${savedHeaders}, ${savedBody}, ${timeoutMs}, ${intervalSeconds}, ${enabled}, ${componentId}, ${componentName})
       `;
     }
-    await auditLog({ userId: parseInt(session.sub, 10) || null, action: "ASSET_MONITOR_CONFIGURED", resource: "assets", resourceId: assetId, details: { checkType, url, method, expectedStatus, timeoutMs, componentId, hasHeaders: Boolean(savedHeaders), hasBody: Boolean(savedBody) }, ip: getIp(req) });
+    await auditLog({ userId: parseInt(session.sub, 10) || null, action: "ASSET_MONITOR_CONFIGURED", resource: "assets", resourceId: assetId, details: { checkType, url, method, expectedStatus, timeoutMs, intervalSeconds, enabled: Boolean(enabled), componentId, hasHeaders: Boolean(savedHeaders), hasBody: Boolean(savedBody) }, ip: getIp(req) });
     return NextResponse.json({ ok: true });
   } catch (error) {
     return NextResponse.json({ error: error instanceof Error ? error.message : "Invalid monitoring configuration" }, { status: 400 });

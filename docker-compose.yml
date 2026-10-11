@@ -12,7 +12,7 @@ services:
     # consuming another user-defined subnet on the shared Proxmox host.
     network_mode: bridge
     ports:
-      - "7003:3336"
+      - "7247:3336"
     env_file:
       # A non-.env name avoids Compose interpolation of bcrypt dollar signs.
       - pixxel247.env
