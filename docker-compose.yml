@@ -9,6 +9,9 @@ services:
     # This is a single-container app. Reuse Docker's built-in bridge instead of
     # consuming another user-defined subnet on the shared Proxmox host.
     network_mode: bridge
+    dns:
+      - 8.8.8.8
+      - 1.1.1.1
     ports:
       - "7247:3336"
     env_file:
