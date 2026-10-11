@@ -3,8 +3,6 @@ services:
     build:
       context: .
       dockerfile: Dockerfile
-      args:
-        NPM_REGISTRY: http://192.168.100.223:4873
     image: pixxel247:latest
     container_name: pixxel247
     restart: unless-stopped

@@ -4,9 +4,8 @@ FROM node:22-alpine AS deps
 RUN apk add --no-cache libc6-compat
 WORKDIR /app
 
-ARG NPM_REGISTRY=https://registry.npmjs.org/
 COPY package.json package-lock.json ./
-RUN npm ci --registry=${NPM_REGISTRY} --fetch-timeout=600000 --fetch-retries=8 --fetch-retry-maxtimeout=120000 \
+RUN npm ci \
     && chmod -R +x node_modules/.bin
 
 FROM node:22-alpine AS builder
