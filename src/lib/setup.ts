@@ -40,10 +40,12 @@ export function getSiteConfig(): SiteConfig | null {
   }
 }
 
-export function isSetupComplete() {
+export function isSetupComplete(): boolean {
   if (getSiteConfig()?.setupComplete === true) return true;
-  // Preserve the existing environment-configured development/deployment path.
-  return Boolean(process.env.DATABASE_URL && process.env.ADMIN_EMAIL && process.env.ADMIN_PASSWORD_HASH);
+  if (process.env.SETUP_COMPLETE === "true" || (Boolean(process.env.DATABASE_URL) && Boolean(process.env.ADMIN_EMAIL))) {
+    return true;
+  }
+  return false;
 }
 
 export function writeSiteConfig(config: SiteConfig) {
@@ -71,5 +73,9 @@ export function databaseUrlFromConfig(config: DbConfig): string {
 }
 
 export function getConfiguredDialect(): DbDialect {
-  return getSiteConfig()?.db.dialect || "mysql";
+  const config = getSiteConfig();
+  if (config?.db?.dialect) return config.db.dialect;
+  if (process.env.DB_TYPE === "sqlite") return "sqlite";
+  if (process.env.DATABASE_URL?.startsWith("file:")) return "sqlite";
+  return "mysql";
 }

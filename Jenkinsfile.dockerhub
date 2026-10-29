@@ -44,9 +44,17 @@ pipeline {
         stage('Compute Version') {
             steps {
                 script {
-                    def response = sh(script: "curl -sf 'https://hub.docker.com/v2/repositories/${env.IMAGE_NAME}/tags?page_size=100'", returnStdout: true).trim()
-                    if (!response) { error("Failed to fetch Docker Hub tags for ${env.IMAGE_NAME}") }
-                    env.IMAGE_VERSION = computeNextVersion(response)
+                    def response = sh(
+                        script: "curl -sf 'https://hub.docker.com/v2/repositories/${env.IMAGE_NAME}/tags?page_size=100' || echo ''",
+                        returnStdout: true
+                    ).trim()
+
+                    if (!response) {
+                        echo "No tags found or repository is new on Docker Hub. Defaulting to 1.0"
+                        env.IMAGE_VERSION = "1.0"
+                    } else {
+                        env.IMAGE_VERSION = computeNextVersion(response)
+                    }
                     echo "Computed next version: ${env.IMAGE_VERSION}"
                 }
             }

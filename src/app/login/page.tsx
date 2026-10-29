@@ -16,6 +16,7 @@ export default function LoginPage() {
   const [activeProfile, setActiveProfile] = useState<RememberedProfile | null>(null);
   const [silentLogin, setSilentLogin] = useState(false);
 
+  const [checkingSetup, setCheckingSetup] = useState(true);
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [trustDevice, setTrustDevice] = useState(false);
@@ -26,12 +27,16 @@ export default function LoginPage() {
     fetch("/api/setup/status")
       .then((response) => response.json())
       .then((data) => {
-        if (!data.complete) return router.replace("/setup");
-        const remembered = getRememberedProfiles();
-        setProfiles(remembered);
-        setView(remembered.length > 0 ? "profiles" : "form");
+        if (!data.complete) {
+          router.replace("/setup");
+        } else {
+          setCheckingSetup(false);
+          const remembered = getRememberedProfiles();
+          setProfiles(remembered);
+          setView(remembered.length > 0 ? "profiles" : "form");
+        }
       })
-      .catch(() => {});
+      .catch(() => setCheckingSetup(false));
   }, [router]);
 
   async function performLogin(loginEmail: string, loginPassword: string, trust: boolean) {
@@ -147,6 +152,14 @@ export default function LoginPage() {
     setSilentLogin(false);
     setError("");
     setView(profiles.length > 0 ? "profiles" : "form");
+  }
+
+  if (checkingSetup) {
+    return (
+      <div className="min-h-full flex items-center justify-center bg-gray-50 dark:bg-slate-950">
+        <div className="h-7 w-7 animate-spin rounded-full border-4 border-emerald-500 border-t-transparent" />
+      </div>
+    );
   }
 
   return (
