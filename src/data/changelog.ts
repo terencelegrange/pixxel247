@@ -9,6 +9,7 @@
  * Format: { date: "YYYY-MM-DD", description: "Short description of the change" }
  */
 export const CHANGELOG: { date: string; description: string }[] = [
+  { date: "2026-10-29", description: "Created comprehensive README documentation and synchronized repository details across GitHub and Docker Hub" },
   { date: "2026-10-11", description: "Configured deployment to Proxmox host on port 7247, enabled Authorization: Bearer middleware routing for API keys, added direct POST /api/assets endpoint, and automatic background monitoring engine startup on boot" },
   { date: "2026-09-26", description: "Added Service Status continuous monitoring with 90-segment uptime history bars, latency trends, configurable alert destinations (Discord, Email, Webhooks, Slack), and per-service notification routing" },
   { date: "2026-09-21", description: "Added Pixxel-style first-run setup with runtime-selectable SQLite or MySQL storage and administrator creation" },
